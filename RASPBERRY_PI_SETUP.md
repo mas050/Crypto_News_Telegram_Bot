@@ -43,17 +43,32 @@ git clone https://github.com/mas050/Crypto_News_Telegram_Bot.git
 cd Crypto_News_Telegram_Bot
 ```
 
-### Step 4: Install Python Dependencies
+### Step 4: Create a Virtual Environment
 
 ```bash
-# Install required packages
-pip3 install -r requirements.txt
+# Install python3-venv if not already installed
+sudo apt install python3-venv python3-full -y
 
-# If you get permission errors, use:
-pip3 install --user -r requirements.txt
+# Create a virtual environment
+python3 -m venv venv
+
+# Activate the virtual environment
+source venv/bin/activate
+
+# Your prompt should now show (venv) at the beginning
 ```
 
-### Step 5: Configure Environment Variables
+### Step 5: Install Python Dependencies
+
+```bash
+# Make sure virtual environment is activated (you should see (venv) in prompt)
+# Install required packages
+pip install -r requirements.txt
+```
+
+**Note**: You'll need to activate the virtual environment (`source venv/bin/activate`) every time you want to run commands manually. The systemd service will handle this automatically.
+
+### Step 6: Configure Environment Variables
 
 ```bash
 # Copy the example environment file
@@ -73,11 +88,14 @@ TWITTER_BEARER_TOKEN=your_twitter_token_if_you_have_one
 
 **Save and exit**: Press `Ctrl+X`, then `Y`, then `Enter`
 
-### Step 6: Test the Bot
+### Step 7: Test the Bot
 
 ```bash
+# Make sure virtual environment is activated
+source venv/bin/activate
+
 # Run the bot once to make sure it works
-python3 Crypto_News_Analyzer.py
+python Crypto_News_Analyzer.py
 ```
 
 Press `Ctrl+C` to stop after verifying it works.
@@ -99,21 +117,22 @@ After=network.target
 
 [Service]
 Type=simple
-User=pi
-WorkingDirectory=/home/pi/Crypto_News_Telegram_Bot
-ExecStart=/usr/bin/python3 /home/pi/Crypto_News_Telegram_Bot/Crypto_News_Analyzer.py
+User=sebastien
+WorkingDirectory=/home/sebastien/Python/Crypto_News_Telegram_Bot
+ExecStart=/home/sebastien/Python/Crypto_News_Telegram_Bot/venv/bin/python /home/sebastien/Python/Crypto_News_Telegram_Bot/Crypto_News_Analyzer.py
 Restart=always
 RestartSec=10
-StandardOutput=append:/home/pi/Crypto_News_Telegram_Bot/bot.log
-StandardError=append:/home/pi/Crypto_News_Telegram_Bot/bot_error.log
+StandardOutput=append:/home/sebastien/Python/Crypto_News_Telegram_Bot/bot.log
+StandardError=append:/home/sebastien/Python/Crypto_News_Telegram_Bot/bot_error.log
 
 [Install]
 WantedBy=multi-user.target
 ```
 
 **Important Notes:**
-- Replace `pi` with your actual username if different
-- Adjust paths if you cloned to a different location
+- Replace `sebastien` with your actual username if different
+- Replace `/home/sebastien/Python/Crypto_News_Telegram_Bot` with your actual path
+- The key change is using `venv/bin/python` instead of system Python
 
 **Save and exit**: Press `Ctrl+X`, then `Y`, then `Enter`
 
@@ -192,7 +211,7 @@ Press `Ctrl+C` to stop viewing logs.
 
 ```bash
 # Navigate to project directory
-cd ~/Crypto_News_Telegram_Bot
+cd ~/Python/Crypto_News_Telegram_Bot
 
 # Stop the bot
 sudo systemctl stop crypto-news-bot.service
@@ -200,8 +219,10 @@ sudo systemctl stop crypto-news-bot.service
 # Pull latest changes from GitHub
 git pull origin main
 
-# Install any new dependencies
-pip3 install -r requirements.txt
+# Activate virtual environment and install any new dependencies
+source venv/bin/activate
+pip install -r requirements.txt
+deactivate
 
 # Start the bot
 sudo systemctl start crypto-news-bot.service
@@ -226,7 +247,7 @@ Add this content:
 echo "🔄 Updating Crypto News Bot..."
 
 # Navigate to project directory
-cd ~/Crypto_News_Telegram_Bot
+cd ~/Python/Crypto_News_Telegram_Bot
 
 # Stop the service
 echo "⏸️  Stopping bot..."
@@ -238,7 +259,9 @@ git pull origin main
 
 # Install/update dependencies
 echo "📦 Installing dependencies..."
-pip3 install -r requirements.txt
+source venv/bin/activate
+pip install -r requirements.txt
+deactivate
 
 # Start the service
 echo "▶️  Starting bot..."
@@ -288,9 +311,11 @@ ls -la ~/Crypto_News_Telegram_Bot/
 ### Module Not Found Errors
 
 ```bash
-# Reinstall dependencies
-cd ~/Crypto_News_Telegram_Bot
-pip3 install --user -r requirements.txt
+# Reinstall dependencies in virtual environment
+cd ~/Python/Crypto_News_Telegram_Bot
+source venv/bin/activate
+pip install -r requirements.txt
+deactivate
 ```
 
 ### Check Python Path
@@ -318,7 +343,7 @@ sudo systemctl enable crypto-news-bot.service
 If you have local changes conflicting with GitHub:
 
 ```bash
-cd ~/Crypto_News_Telegram_Bot
+cd ~/Python/Crypto_News_Telegram_Bot
 
 # Stash your local changes (saves them temporarily)
 git stash
