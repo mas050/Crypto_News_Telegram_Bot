@@ -1,9 +1,6 @@
 # Environment variables - NEVER commit these!
 .env
 
-# News history tracking
-sent_news_history.json
-
 # Python
 __pycache__/
 *.py[cod]
