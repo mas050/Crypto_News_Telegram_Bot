@@ -1,35 +1,35 @@
 {
   "original": {
-    "template": "{emoji} *Crypto Opportunity Detected*\n\n*Source:* {source}\n*Title:* {title}\n\n*Type:* {opportunity_type}\n*Risk Level:* {risk_level}\n\n*Analysis:*\n{explanation}\n\n*Link:* {link}\n\n_Analyzed at {timestamp}_\n_Style: {style}_"
+    "template": "{emoji} *Crypto Opportunity Detected*\n\n*Source:* {source}\n*Title:* {title}\n\n*Type:* {opportunity_type}\n*Risk Level:* {risk_level}\n\n*Analysis:*\n{explanation}\n\n*Link:* {link}\n\n_Analyzed at {timestamp}_"
   },
   "bullish_bearish_focus": {
-    "template": "{emoji} *Market Signal Alert*\n\n📰 *{title}*\n\n*Market Direction:* {opportunity_type}\n*Risk Assessment:* {risk_level}\n\n💡 *Insight:*\n{explanation}\n\n🔗 [Read More]({link})\n\n_Source: {source} | {timestamp}_\n_Analysis: {style}_"
+    "template": "{emoji} *Market Signal Alert*\n\n📰 *{title}*\n\n*Market Direction:* {opportunity_type}\n*Risk Assessment:* {risk_level}\n\n💡 *Insight:*\n{explanation}\n\n🔗 [Read More]({link})\n\n_Source: {source} | {timestamp}_"
   },
   "short_long_term_emphasis": {
-    "template": "{emoji} *Investment Opportunity*\n\n*{title}*\n\n⏰ *Time Horizon:* {opportunity_type}\n⚠️ *Risk:* {risk_level}\n\n📊 *Strategic Analysis:*\n{explanation}\n\n📍 Source: {source}\n🔗 {link}\n\n_{timestamp} | {style}_"
+    "template": "{emoji} *Investment Opportunity*\n\n*{title}*\n\n⏰ *Time Horizon:* {opportunity_type}\n⚠️ *Risk:* {risk_level}\n\n📊 *Strategic Analysis:*\n{explanation}\n\n📍 Source: {source}\n🔗 {link}\n\n_{timestamp}_"
   },
   "sentiment_driven": {
-    "template": "{emoji} *Market Sentiment Alert*\n\n*{title}*\n\n🎭 *Sentiment Type:* {opportunity_type}\n📉📈 *Risk Level:* {risk_level}\n\n🧠 *Sentiment Analysis:*\n{explanation}\n\n📱 Via: {source}\n🌐 {link}\n\n_Detected: {timestamp}_\n_{style}_"
+    "template": "{emoji} *Market Sentiment Alert*\n\n*{title}*\n\n🎭 *Sentiment Type:* {opportunity_type}\n📉📈 *Risk Level:* {risk_level}\n\n🧠 *Sentiment Analysis:*\n{explanation}\n\n📱 Via: {source}\n🌐 {link}\n\n_Detected: {timestamp}_"
   },
   "historical_comparison": {
-    "template": "{emoji} *Historical Pattern Detected*\n\n📜 *{title}*\n\n🔄 *Pattern:* {opportunity_type}\n⚡ *Risk:* {risk_level}\n\n📖 *Historical Context:*\n{explanation}\n\n📌 {source}\n🔗 {link}\n\n_Analysis Time: {timestamp}_\n_Method: {style}_"
+    "template": "{emoji} *Historical Pattern Detected*\n\n📜 *{title}*\n\n🔄 *Pattern:* {opportunity_type}\n⚡ *Risk:* {risk_level}\n\n📖 *Historical Context:*\n{explanation}\n\n📌 {source}\n🔗 {link}\n\n_Analysis Time: {timestamp}_"
   },
   "sector_specific": {
-    "template": "{emoji} *Sector Opportunity*\n\n*{title}*\n\n🏗️ *Sector:* {opportunity_type}\n🎯 *Risk Level:* {risk_level}\n\n🔍 *Sector Analysis:*\n{explanation}\n\n📡 Source: {source}\n🌐 [Full Article]({link})\n\n_{timestamp}_\n_Focus: {style}_"
+    "template": "{emoji} *Sector Opportunity*\n\n*{title}*\n\n🏗️ *Sector:* {opportunity_type}\n🎯 *Risk Level:* {risk_level}\n\n🔍 *Sector Analysis:*\n{explanation}\n\n📡 Source: {source}\n🌐 [Full Article]({link})\n\n_{timestamp}_"
   },
   "probability_speculation": {
-    "template": "{emoji} *Speculative Opportunity*\n\n*{title}*\n\n🎲 *Type:* {opportunity_type}\n⚖️ *Risk:* {risk_level}\n\n🔮 *Probability Assessment:*\n{explanation}\n\n📰 {source}\n🔗 {link}\n\n_Evaluated: {timestamp}_\n_Model: {style}_"
+    "template": "{emoji} *Speculative Opportunity*\n\n*{title}*\n\n🎲 *Type:* {opportunity_type}\n⚖️ *Risk:* {risk_level}\n\n🔮 *Probability Assessment:*\n{explanation}\n\n📰 {source}\n🔗 {link}\n\n_Evaluated: {timestamp}_"
   },
   "beginner_friendly": {
-    "template": "{emoji} *Easy Opportunity Spotted!*\n\n📰 *{title}*\n\n✨ *What is it?* {opportunity_type}\n🛡️ *How risky?* {risk_level}\n\n📚 *Simple Explanation:*\n{explanation}\n\n👉 Source: {source}\n📖 [Learn More]({link})\n\n_Found: {timestamp}_\n_Guide: {style}_"
+    "template": "{emoji} *Easy Opportunity Spotted!*\n\n📰 *{title}*\n\n✨ *What is it?* {opportunity_type}\n🛡️ *How risky?* {risk_level}\n\n📚 *Simple Explanation:*\n{explanation}\n\n👉 Source: {source}\n📖 [Learn More]({link})\n\n_Found: {timestamp}_"
   },
   "advanced_technical": {
-    "template": "{emoji} *Technical Analysis*\n\n`{title}`\n\n⚙️ *Technical Signal:* {opportunity_type}\n📊 *Risk Assessment:* {risk_level}\n\n🔧 *Technical Breakdown:*\n{explanation}\n\n🗂️ Data: {source}\n🔗 {link}\n\n_Timestamp: {timestamp}_\n_Engine: {style}_"
+    "template": "{emoji} *Technical Analysis*\n\n`{title}`\n\n⚙️ *Technical Signal:* {opportunity_type}\n📊 *Risk Assessment:* {risk_level}\n\n🔧 *Technical Breakdown:*\n{explanation}\n\n🗂️ Data: {source}\n🔗 {link}\n\n_Timestamp: {timestamp}_"
   },
   "global_market_impact": {
-    "template": "{emoji} *Global Market Alert*\n\n🌍 *{title}*\n\n🌐 *Impact Type:* {opportunity_type}\n⚠️ *Risk Level:* {risk_level}\n\n🗺️ *Global Implications:*\n{explanation}\n\n📍 {source}\n🔗 {link}\n\n_Detected: {timestamp}_\n_Scope: {style}_"
+    "template": "{emoji} *Global Market Alert*\n\n🌍 *{title}*\n\n🌐 *Impact Type:* {opportunity_type}\n⚠️ *Risk Level:* {risk_level}\n\n🗺️ *Global Implications:*\n{explanation}\n\n📍 {source}\n🔗 {link}\n\n_Detected: {timestamp}_"
   },
   "humorous_light_hearted": {
-    "template": "{emoji} *Crypto Fun Alert!*\n\n😄 *{title}*\n\n🎪 *Opportunity Type:* {opportunity_type}\n🎢 *Risk Level:* {risk_level}\n\n🎭 *The Scoop:*\n{explanation}\n\n📰 Via: {source}\n🔗 [Check it out!]({link})\n\n_Spotted: {timestamp}_\n_Vibe: {style}_"
+    "template": "{emoji} *Crypto Fun Alert!*\n\n😄 *{title}*\n\n🎪 *Opportunity Type:* {opportunity_type}\n🎢 *Risk Level:* {risk_level}\n\n🎭 *The Scoop:*\n{explanation}\n\n📰 Via: {source}\n🔗 [Check it out!]({link})\n\n_Spotted: {timestamp}_"
   }
 }
