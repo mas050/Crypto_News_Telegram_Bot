@@ -54,6 +54,9 @@ class CryptoNewsAnalyzer:
         # Load prompt variations
         self.prompts = self._load_prompts()
         self.current_prompt_style = None  # Will be set during analysis
+        
+        # Load message templates
+        self.message_templates = self._load_message_templates()
     
     def _load_prompts(self) -> Dict[str, Dict[str, str]]:
         """Load prompt variations from prompts.json"""
@@ -72,6 +75,24 @@ class CryptoNewsAnalyzer:
             }
         except Exception as e:
             print(f"⚠ Error loading prompts: {str(e)}")
+            return {}
+    
+    def _load_message_templates(self) -> Dict[str, Dict[str, str]]:
+        """Load message templates from message_templates.json"""
+        try:
+            with open('message_templates.json', 'r') as f:
+                templates = json.load(f)
+                print(f"💬 Loaded {len(templates)} message templates")
+                return templates
+        except FileNotFoundError:
+            print("⚠ message_templates.json not found, using default template")
+            return {
+                "original": {
+                    "template": "{emoji} *Crypto Opportunity Detected*\n\n*Source:* {source}\n*Title:* {title}\n\n*Type:* {opportunity_type}\n*Risk Level:* {risk_level}\n\n*Analysis:*\n{explanation}\n\n*Link:* {link}\n\n_Analyzed at {timestamp}_\n_Style: {style}_"
+                }
+            }
+        except Exception as e:
+            print(f"⚠ Error loading message templates: {str(e)}")
             return {}
     
     def _generate_news_hash(self, item: Dict[str, Any]) -> str:
@@ -425,17 +446,36 @@ Respond in JSON format for each item:
         
         for opp in opportunities:
             try:
-                # Format message
+                # Format message using template
                 analysis = opp.get('ai_analysis', {})
                 
-                # Get prompt emoji if available
-                prompt_emoji = ""
-                if self.current_prompt_style and self.prompts:
-                    prompt_emoji = self.prompts[self.current_prompt_style].get('emoji', '🚀')
-                else:
-                    prompt_emoji = '🚀'
+                # Get prompt emoji and template
+                style = self.current_prompt_style or 'original'
+                prompt_emoji = '🚀'
+                template = None
                 
-                message = f"""
+                if self.prompts and style in self.prompts:
+                    prompt_emoji = self.prompts[style].get('emoji', '🚀')
+                
+                if self.message_templates and style in self.message_templates:
+                    template = self.message_templates[style].get('template')
+                
+                # Format message with template or use default
+                if template:
+                    message = template.format(
+                        emoji=prompt_emoji,
+                        source=opp['source'],
+                        title=opp['title'],
+                        opportunity_type=analysis.get('opportunity_type', 'N/A'),
+                        risk_level=analysis.get('risk_level', 'N/A'),
+                        explanation=analysis.get('explanation', 'No analysis available'),
+                        link=opp.get('link', 'N/A'),
+                        timestamp=datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                        style=style
+                    )
+                else:
+                    # Fallback to default format
+                    message = f"""
 {prompt_emoji} *Crypto Opportunity Detected*
 
 *Source:* {opp['source']}
@@ -450,7 +490,7 @@ Respond in JSON format for each item:
 *Link:* {opp.get('link', 'N/A')}
 
 _Analyzed at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}_
-_Style: {self.current_prompt_style or 'default'}_
+_Style: {style}_
 """
                 
                 payload = {
