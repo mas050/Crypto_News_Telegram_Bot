@@ -1,0 +1,46 @@
+{
+  "original": {
+    "prompt": "Analyze the following crypto news items and identify potential trading or investment opportunities.\n\nFor each item, determine:\n1. Is this a significant opportunity? (YES/NO)\n2. What type of opportunity? (price movement, new listing, partnership, technology breakthrough, market trend, etc.)\n3. Risk level (LOW/MEDIUM/HIGH)\n4. Brief explanation (max 2 sentences)\n\nContent to analyze:\n{content_summary}\n\nRespond in JSON format for each item:\n{{\n    \"item_1\": {{\n        \"is_opportunity\": true/false,\n        \"opportunity_type\": \"type\",\n        \"risk_level\": \"LOW/MEDIUM/HIGH\",\n        \"explanation\": \"brief explanation\"\n    }},\n    ...\n}}",
+    "emoji": "🔍"
+  },
+  "bullish_bearish_focus": {
+    "prompt": "Examine these crypto news pieces for trading or investment signals, highlighting bullish or bearish implications.\n\nFor each item, determine:\n1. Is this a significant opportunity? (YES/NO)\n2. What type of opportunity? (bullish price surge, bearish correction, partnership boost, regulatory shift, etc.)\n3. Risk level (LOW/MEDIUM/HIGH)\n4. Brief explanation (max 2 sentences, including potential market direction)\n\nContent to analyze:\n{content_summary}\n\nRespond in JSON format for each item:\n{{\n    \"item_1\": {{\n        \"is_opportunity\": true/false,\n        \"opportunity_type\": \"type\",\n        \"risk_level\": \"LOW/MEDIUM/HIGH\",\n        \"explanation\": \"brief explanation\"\n    }},\n    ...\n}}",
+    "emoji": "📈"
+  },
+  "short_long_term_emphasis": {
+    "prompt": "Review the crypto news items below and spot opportunities, distinguishing between short-term trades and long-term investments.\n\nFor each item, determine:\n1. Is this a significant opportunity? (YES/NO)\n2. What type of opportunity? (short-term pump, long-term growth, token launch, ecosystem expansion, etc.)\n3. Risk level (LOW/MEDIUM/HIGH)\n4. Brief explanation (max 2 sentences, noting time horizon)\n\nContent to analyze:\n{content_summary}\n\nRespond in JSON format for each item:\n{{\n    \"item_1\": {{\n        \"is_opportunity\": true/false,\n        \"opportunity_type\": \"type\",\n        \"risk_level\": \"LOW/MEDIUM/HIGH\",\n        \"explanation\": \"brief explanation\"\n    }},\n    ...\n}}",
+    "emoji": "⏳"
+  },
+  "sentiment_driven": {
+    "prompt": "Analyze these crypto news updates by gauging overall market sentiment and uncovering hidden opportunities.\n\nFor each item, determine:\n1. Is this a significant opportunity? (YES/NO)\n2. What type of opportunity? (hype-driven rally, fear-based dip, innovation spark, community buzz, etc.)\n3. Risk level (LOW/MEDIUM/HIGH)\n4. Brief explanation (max 2 sentences, incorporating sentiment like positive/negative/neutral)\n\nContent to analyze:\n{content_summary}\n\nRespond in JSON format for each item:\n{{\n    \"item_1\": {{\n        \"is_opportunity\": true/false,\n        \"opportunity_type\": \"type\",\n        \"risk_level\": \"LOW/MEDIUM/HIGH\",\n        \"explanation\": \"brief explanation\"\n    }},\n    ...\n}}",
+    "emoji": "😊"
+  },
+  "historical_comparison": {
+    "prompt": "Evaluate the following crypto news for opportunities, drawing quick parallels to similar past events in crypto history.\n\nFor each item, determine:\n1. Is this a significant opportunity? (YES/NO)\n2. What type of opportunity? (repeat of 2021 bull run pattern, new exchange listing, merger-like partnership, tech upgrade, etc.)\n3. Risk level (LOW/MEDIUM/HIGH)\n4. Brief explanation (max 2 sentences, referencing a historical analogy if relevant)\n\nContent to analyze:\n{content_summary}\n\nRespond in JSON format for each item:\n{{\n    \"item_1\": {{\n        \"is_opportunity\": true/false,\n        \"opportunity_type\": \"type\",\n        \"risk_level\": \"LOW/MEDIUM/HIGH\",\n        \"explanation\": \"brief explanation\"\n    }},\n    ...\n}}",
+    "emoji": "📜"
+  },
+  "sector_specific": {
+    "prompt": "Scan these crypto news items for opportunities, focusing on specific sectors like DeFi, NFTs, or blockchain infrastructure.\n\nFor each item, determine:\n1. Is this a significant opportunity? (YES/NO)\n2. What type of opportunity? (DeFi yield boost, NFT collection hype, layer-2 scaling, metaverse development, etc.)\n3. Risk level (LOW/MEDIUM/HIGH)\n4. Brief explanation (max 2 sentences, highlighting the sector impact)\n\nContent to analyze:\n{content_summary}\n\nRespond in JSON format for each item:\n{{\n    \"item_1\": {{\n        \"is_opportunity\": true/false,\n        \"opportunity_type\": \"type\",\n        \"risk_level\": \"LOW/MEDIUM/HIGH\",\n        \"explanation\": \"brief explanation\"\n    }},\n    ...\n}}",
+    "emoji": "🛡️"
+  },
+  "probability_speculation": {
+    "prompt": "Assess the crypto news content for speculative opportunities, estimating rough probabilities of success.\n\nFor each item, determine:\n1. Is this a significant opportunity? (YES/NO)\n2. What type of opportunity? (high-probability breakout, speculative gamble, adoption milestone, regulatory win, etc.)\n3. Risk level (LOW/MEDIUM/HIGH)\n4. Brief explanation (max 2 sentences, including a speculative probability like 'high chance' or '50/50')\n\nContent to analyze:\n{content_summary}\n\nRespond in JSON format for each item:\n{{\n    \"item_1\": {{\n        \"is_opportunity\": true/false,\n        \"opportunity_type\": \"type\",\n        \"risk_level\": \"LOW/MEDIUM/HIGH\",\n        \"explanation\": \"brief explanation\"\n    }},\n    ...\n}}",
+    "emoji": "🎲"
+  },
+  "beginner_friendly": {
+    "prompt": "Break down these crypto news items into simple opportunities for beginner traders or investors.\n\nFor each item, determine:\n1. Is this a significant opportunity? (YES/NO)\n2. What type of opportunity? (easy entry point, beginner-friendly partnership, basic price swing, wallet tech intro, etc.)\n3. Risk level (LOW/MEDIUM/HIGH)\n4. Brief explanation (max 2 sentences, using simple language)\n\nContent to analyze:\n{content_summary}\n\nRespond in JSON format for each item:\n{{\n    \"item_1\": {{\n        \"is_opportunity\": true/false,\n        \"opportunity_type\": \"type\",\n        \"risk_level\": \"LOW/MEDIUM/HIGH\",\n        \"explanation\": \"brief explanation\"\n    }},\n    ...\n}}",
+    "emoji": "👶"
+  },
+  "advanced_technical": {
+    "prompt": "Dive deep into the technical aspects of these crypto news pieces to identify sophisticated opportunities.\n\nFor each item, determine:\n1. Is this a significant opportunity? (YES/NO)\n2. What type of opportunity? (on-chain metric shift, smart contract upgrade, tokenomics change, algorithmic trading signal, etc.)\n3. Risk level (LOW/MEDIUM/HIGH)\n4. Brief explanation (max 2 sentences, including technical details)\n\nContent to analyze:\n{content_summary}\n\nRespond in JSON format for each item:\n{{\n    \"item_1\": {{\n        \"is_opportunity\": true/false,\n        \"opportunity_type\": \"type\",\n        \"risk_level\": \"LOW/MEDIUM/HIGH\",\n        \"explanation\": \"brief explanation\"\n    }},\n    ...\n}}",
+    "emoji": "🔧"
+  },
+  "global_market_impact": {
+    "prompt": "Analyze the crypto news for opportunities with a global perspective, considering international market effects.\n\nFor each item, determine:\n1. Is this a significant opportunity? (YES/NO)\n2. What type of opportunity? (cross-border adoption, emerging market entry, global regulation change, international partnership, etc.)\n3. Risk level (LOW/MEDIUM/HIGH)\n4. Brief explanation (max 2 sentences, noting worldwide implications)\n\nContent to analyze:\n{content_summary}\n\nRespond in JSON format for each item:\n{{\n    \"item_1\": {{\n        \"is_opportunity\": true/false,\n        \"opportunity_type\": \"type\",\n        \"risk_level\": \"LOW/MEDIUM/HIGH\",\n        \"explanation\": \"brief explanation\"\n    }},\n    ...\n}}",
+    "emoji": "🌍"
+  },
+  "humorous_light_hearted": {
+    "prompt": "Spot crypto opportunities in these news items with a fun, light-hearted spin to make analysis engaging.\n\nFor each item, determine:\n1. Is this a significant opportunity? (YES/NO)\n2. What type of opportunity? (moonshot potential, dip-buying fun, hype train ride, tech geek breakthrough, etc.)\n3. Risk level (LOW/MEDIUM/HIGH)\n4. Brief explanation (max 2 sentences, adding a touch of humor if it fits)\n\nContent to analyze:\n{content_summary}\n\nRespond in JSON format for each item:\n{{\n    \"item_1\": {{\n        \"is_opportunity\": true/false,\n        \"opportunity_type\": \"type\",\n        \"risk_level\": \"LOW/MEDIUM/HIGH\",\n        \"explanation\": \"brief explanation\"\n    }},\n    ...\n}}",
+    "emoji": "😂"
+  }
+}
