@@ -529,17 +529,21 @@ Respond in JSON format for each item:
                 
                 # Format message with template or use default
                 if template:
-                    message = template.format(
-                        emoji=prompt_emoji,
-                        source=opp['source'],
-                        title=opp['title'],
-                        opportunity_type=analysis.get('opportunity_type', 'N/A'),
-                        risk_level=analysis.get('risk_level', 'N/A'),
-                        explanation=analysis.get('explanation', 'No analysis available'),
-                        link=opp.get('link', 'N/A'),
-                        timestamp=datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                        style=style
-                    )
+                    try:
+                        message = template.format(
+                            emoji=prompt_emoji,
+                            source=opp['source'],
+                            title=opp['title'],
+                            opportunity_type=analysis.get('opportunity_type', 'N/A'),
+                            risk_level=analysis.get('risk_level', 'N/A'),
+                            explanation=analysis.get('explanation', 'No analysis available'),
+                            link=opp.get('link', 'N/A'),
+                            timestamp=datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                            style=style
+                        )
+                    except Exception as template_error:
+                        print(f"⚠ Template formatting failed: {str(template_error)}, using default...")
+                        template = None
                 else:
                     # Fallback to default format
                     message = f"""
@@ -588,14 +592,26 @@ _Style: {style}_
                 
                 # If no image or image failed, send as text
                 if not sent_successfully:
+                    # Try with Markdown first, fallback to plain text if it fails
                     payload = {
                         'chat_id': self.telegram_chat_id,
                         'text': message,
                         'parse_mode': 'Markdown',
                         'disable_web_page_preview': True
                     }
-                    response = requests.post(telegram_api, json=payload, timeout=10)
-                    response.raise_for_status()
+                    try:
+                        response = requests.post(telegram_api, json=payload, timeout=10)
+                        response.raise_for_status()
+                    except Exception as markdown_error:
+                        # If Markdown fails, try without parse_mode (plain text)
+                        print(f"⚠ Markdown failed, sending as plain text...")
+                        payload = {
+                            'chat_id': self.telegram_chat_id,
+                            'text': message.replace('*', '').replace('_', ''),  # Remove markdown formatting
+                            'disable_web_page_preview': True
+                        }
+                        response = requests.post(telegram_api, json=payload, timeout=10)
+                        response.raise_for_status()
                 
                 print(f"✓ Sent: {opp['title'][:50]}...")
                 time.sleep(1)  # Rate limiting
