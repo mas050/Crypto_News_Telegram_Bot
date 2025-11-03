@@ -9,13 +9,14 @@ import requests
 import time
 import schedule
 from datetime import datetime, timedelta
-from typing import List, Dict, Any, Set
+from typing import List, Dict, Any, Set, Optional
 import os
 import json
 import hashlib
 import random
 import google.generativeai as genai
 from dotenv import load_dotenv
+from bs4 import BeautifulSoup
 
 # Load environment variables from .env file
 load_dotenv()
@@ -100,6 +101,71 @@ class CryptoNewsAnalyzer:
         # Use title + link to create a unique identifier
         unique_string = f"{item.get('title', '')}|{item.get('link', '')}"
         return hashlib.md5(unique_string.encode()).hexdigest()
+    
+    def _extract_image_from_entry(self, entry) -> Optional[str]:
+        """Extract image URL from RSS feed entry"""
+        try:
+            # Try to get image from media:content or media:thumbnail
+            if hasattr(entry, 'media_content') and entry.media_content:
+                return entry.media_content[0].get('url')
+            
+            if hasattr(entry, 'media_thumbnail') and entry.media_thumbnail:
+                return entry.media_thumbnail[0].get('url')
+            
+            # Try to get image from enclosures
+            if hasattr(entry, 'enclosures') and entry.enclosures:
+                for enclosure in entry.enclosures:
+                    if enclosure.get('type', '').startswith('image/'):
+                        return enclosure.get('href')
+            
+            # Try to extract from summary/description HTML
+            if hasattr(entry, 'summary'):
+                soup = BeautifulSoup(entry.summary, 'html.parser')
+                img = soup.find('img')
+                if img and img.get('src'):
+                    return img.get('src')
+            
+            return None
+        except Exception as e:
+            return None
+    
+    def _fetch_image_from_article(self, url: str) -> Optional[str]:
+        """Fetch image from article page (fallback method)"""
+        try:
+            headers = {'User-Agent': 'Mozilla/5.0 (compatible; CryptoNewsBot/1.0)'}
+            response = requests.get(url, headers=headers, timeout=5)
+            response.raise_for_status()
+            
+            soup = BeautifulSoup(response.content, 'html.parser')
+            
+            # Try Open Graph image
+            og_image = soup.find('meta', property='og:image')
+            if og_image and og_image.get('content'):
+                return og_image.get('content')
+            
+            # Try Twitter card image
+            twitter_image = soup.find('meta', attrs={'name': 'twitter:image'})
+            if twitter_image and twitter_image.get('content'):
+                return twitter_image.get('content')
+            
+            # Try first article image
+            article = soup.find('article')
+            if article:
+                img = article.find('img')
+                if img and img.get('src'):
+                    img_url = img.get('src')
+                    # Handle relative URLs
+                    if img_url.startswith('//'):
+                        return 'https:' + img_url
+                    elif img_url.startswith('/'):
+                        from urllib.parse import urlparse
+                        parsed = urlparse(url)
+                        return f"{parsed.scheme}://{parsed.netloc}{img_url}"
+                    return img_url
+            
+            return None
+        except Exception as e:
+            return None
     
     def _normalize_url(self, url: str) -> str:
         """Normalize URL by removing query parameters and fragments"""
@@ -199,9 +265,10 @@ class CryptoNewsAnalyzer:
                 for entry in feed.entries[:10]:  # Limit to 10 most recent
                     article = {
                         'source': source_name,
-                        'title': entry.get('title', ''),
-                        'link': entry.get('link', ''),
+                        'title': entry.title,
+                        'link': entry.link,
                         'summary': entry.get('summary', ''),
+                        'image_url': self._extract_image_from_entry(entry),
                         'published': entry.get('published', ''),
                         'type': 'rss'
                     }
@@ -493,14 +560,34 @@ _Analyzed at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}_
 _Style: {style}_
 """
                 
-                payload = {
-                    'chat_id': self.telegram_chat_id,
-                    'text': message,
-                    'parse_mode': 'Markdown',
-                    'disable_web_page_preview': True
-                }
+                # Try to get image URL
+                image_url = opp.get('image_url')
                 
-                response = requests.post(telegram_api, json=payload, timeout=10)
+                # If no image in RSS, try fetching from article (only for non-CoinGecko sources)
+                if not image_url and opp['source'] not in ['CoinGecko']:
+                    image_url = self._fetch_image_from_article(opp.get('link', ''))
+                
+                # Send with image if available, otherwise text only
+                if image_url:
+                    # Send as photo with caption
+                    photo_api = f"https://api.telegram.org/bot{self.telegram_bot_token}/sendPhoto"
+                    payload = {
+                        'chat_id': self.telegram_chat_id,
+                        'photo': image_url,
+                        'caption': message,
+                        'parse_mode': 'Markdown'
+                    }
+                    response = requests.post(photo_api, json=payload, timeout=10)
+                else:
+                    # Send as text message
+                    payload = {
+                        'chat_id': self.telegram_chat_id,
+                        'text': message,
+                        'parse_mode': 'Markdown',
+                        'disable_web_page_preview': True
+                    }
+                    response = requests.post(telegram_api, json=payload, timeout=10)
+                
                 response.raise_for_status()
                 
                 print(f"✓ Sent: {opp['title'][:50]}...")
