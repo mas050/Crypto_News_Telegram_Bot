@@ -546,8 +546,16 @@ _Style: {style}_
             # Step 5: Filter opportunities
             opportunities = self.filter_opportunities(analyzed_items)
             
-            # Step 6: Send to Telegram
-            self.send_to_telegram(opportunities)
+            # Step 6: Randomly select 1-3 opportunities to send
+            if opportunities:
+                max_posts = random.randint(1, 3)
+                selected_opportunities = random.sample(opportunities, min(max_posts, len(opportunities)))
+                print(f"🎲 Randomly selected {len(selected_opportunities)} out of {len(opportunities)} opportunities to post")
+            else:
+                selected_opportunities = []
+            
+            # Step 7: Send to Telegram
+            self.send_to_telegram(selected_opportunities)
             
             # Step 7: Save history
             self._save_history()
