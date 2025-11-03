@@ -56,6 +56,23 @@ class CryptoNewsAnalyzer:
         unique_string = f"{item.get('title', '')}|{item.get('link', '')}"
         return hashlib.md5(unique_string.encode()).hexdigest()
     
+    def _normalize_url(self, url: str) -> str:
+        """Normalize URL by removing query parameters and fragments"""
+        from urllib.parse import urlparse, urlunparse
+        parsed = urlparse(url)
+        # Keep only scheme, netloc, and path (remove query, fragment)
+        normalized = urlunparse((parsed.scheme, parsed.netloc, parsed.path, '', '', ''))
+        # Remove trailing slash for consistency
+        return normalized.rstrip('/')
+    
+    def _generate_url_hash(self, item: Dict[str, Any]) -> str:
+        """Generate a hash based only on the normalized URL"""
+        url = item.get('link', '')
+        if not url:
+            return None
+        normalized_url = self._normalize_url(url)
+        return hashlib.md5(normalized_url.encode()).hexdigest()
+    
     def _load_history(self) -> Dict[str, float]:
         """Load sent news history from JSON file"""
         if os.path.exists(self.history_file):
@@ -85,14 +102,29 @@ class CryptoNewsAnalyzer:
             print(f"⚠ Error saving history: {str(e)}")
     
     def _is_duplicate(self, item: Dict[str, Any]) -> bool:
-        """Check if a news item has already been analyzed"""
+        """Check if a news item has already been analyzed (by title+link OR by URL)"""
+        # Check title+link hash
         news_hash = self._generate_news_hash(item)
-        return news_hash in self.sent_news_hashes
+        if news_hash in self.sent_news_hashes:
+            return True
+        
+        # Also check URL-only hash (catches same story from different sources)
+        url_hash = self._generate_url_hash(item)
+        if url_hash and url_hash in self.sent_news_hashes:
+            return True
+        
+        return False
     
     def _mark_as_analyzed(self, item: Dict[str, Any]) -> None:
         """Mark a news item as analyzed (whether opportunity or not)"""
+        # Store both title+link hash and URL-only hash
         news_hash = self._generate_news_hash(item)
         self.sent_news_hashes[news_hash] = time.time()
+        
+        # Also store URL hash to catch same story from different sources
+        url_hash = self._generate_url_hash(item)
+        if url_hash:
+            self.sent_news_hashes[url_hash] = time.time()
         
     def fetch_rss_feeds(self) -> List[Dict[str, Any]]:
         """Fetch articles from all RSS feeds"""
