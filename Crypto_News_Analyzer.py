@@ -13,6 +13,7 @@ from typing import List, Dict, Any, Set
 import os
 import json
 import hashlib
+import random
 import google.generativeai as genai
 from dotenv import load_dotenv
 
@@ -49,6 +50,29 @@ class CryptoNewsAnalyzer:
         # History tracking file
         self.history_file = 'sent_news_history.json'
         self.sent_news_hashes = self._load_history()
+        
+        # Load prompt variations
+        self.prompts = self._load_prompts()
+        self.current_prompt_style = None  # Will be set during analysis
+    
+    def _load_prompts(self) -> Dict[str, Dict[str, str]]:
+        """Load prompt variations from prompts.json"""
+        try:
+            with open('prompts.json', 'r') as f:
+                prompts = json.load(f)
+                print(f"📝 Loaded {len(prompts)} prompt variations")
+                return prompts
+        except FileNotFoundError:
+            print("⚠ prompts.json not found, using default prompt")
+            return {
+                "original": {
+                    "prompt": "Analyze the following crypto news items and identify potential trading or investment opportunities.\n\nFor each item, determine:\n1. Is this a significant opportunity? (YES/NO)\n2. What type of opportunity? (price movement, new listing, partnership, technology breakthrough, market trend, etc.)\n3. Risk level (LOW/MEDIUM/HIGH)\n4. Brief explanation (max 2 sentences)\n\nContent to analyze:\n{content_summary}\n\nRespond in JSON format for each item:\n{{\n    \"item_1\": {{\n        \"is_opportunity\": true/false,\n        \"opportunity_type\": \"type\",\n        \"risk_level\": \"LOW/MEDIUM/HIGH\",\n        \"explanation\": \"brief explanation\"\n    }},\n    ...\n}}",
+                    "emoji": "🔍"
+                }
+            }
+        except Exception as e:
+            print(f"⚠ Error loading prompts: {str(e)}")
+            return {}
     
     def _generate_news_hash(self, item: Dict[str, Any]) -> str:
         """Generate a unique hash for a news item based on title and link"""
@@ -254,9 +278,19 @@ class CryptoNewsAnalyzer:
             print("⚠ Gemini API key not set, skipping AI analysis")
             return []
         
-        analyzed_items = []
+        # Select a random prompt style for this run
+        if self.prompts:
+            prompt_key = random.choice(list(self.prompts.keys()))
+            prompt_data = self.prompts[prompt_key]
+            prompt_template = prompt_data['prompt']
+            prompt_emoji = prompt_data['emoji']
+            self.current_prompt_style = prompt_key
+            print(f"\n🤖 Analyzing with '{prompt_key}' style {prompt_emoji}...")
+        else:
+            print("\n🤖 Analyzing content with Google Gemini 2.5 Flash...")
+            prompt_template = None
         
-        print("\n🤖 Analyzing content with Google Gemini 2.5 Flash...")
+        analyzed_items = []
         
         # Batch items for analysis (process in groups)
         batch_size = 5
@@ -271,7 +305,12 @@ class CryptoNewsAnalyzer:
                 for idx, item in enumerate(batch)
             ])
             
-            prompt = f"""Analyze the following crypto news items and identify potential trading or investment opportunities.
+            # Use selected prompt template or default
+            if prompt_template:
+                prompt = prompt_template.format(content_summary=content_summary)
+            else:
+                # Fallback to original prompt
+                prompt = f"""Analyze the following crypto news items and identify potential trading or investment opportunities.
 
 For each item, determine:
 1. Is this a significant opportunity? (YES/NO)
@@ -388,8 +427,16 @@ Respond in JSON format for each item:
             try:
                 # Format message
                 analysis = opp.get('ai_analysis', {})
+                
+                # Get prompt emoji if available
+                prompt_emoji = ""
+                if self.current_prompt_style and self.prompts:
+                    prompt_emoji = self.prompts[self.current_prompt_style].get('emoji', '🚀')
+                else:
+                    prompt_emoji = '🚀'
+                
                 message = f"""
-🚀 *Crypto Opportunity Detected*
+{prompt_emoji} *Crypto Opportunity Detected*
 
 *Source:* {opp['source']}
 *Title:* {opp['title']}
@@ -403,6 +450,7 @@ Respond in JSON format for each item:
 *Link:* {opp.get('link', 'N/A')}
 
 _Analyzed at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}_
+_Style: {self.current_prompt_style or 'default'}_
 """
                 
                 payload = {
