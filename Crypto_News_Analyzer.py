@@ -568,18 +568,26 @@ _Style: {style}_
                     image_url = self._fetch_image_from_article(opp.get('link', ''))
                 
                 # Send with image if available, otherwise text only
+                sent_successfully = False
                 if image_url:
-                    # Send as photo with caption
-                    photo_api = f"https://api.telegram.org/bot{self.telegram_bot_token}/sendPhoto"
-                    payload = {
-                        'chat_id': self.telegram_chat_id,
-                        'photo': image_url,
-                        'caption': message,
-                        'parse_mode': 'Markdown'
-                    }
-                    response = requests.post(photo_api, json=payload, timeout=10)
-                else:
-                    # Send as text message
+                    try:
+                        # Try to send as photo with caption
+                        photo_api = f"https://api.telegram.org/bot{self.telegram_bot_token}/sendPhoto"
+                        payload = {
+                            'chat_id': self.telegram_chat_id,
+                            'photo': image_url,
+                            'caption': message,
+                            'parse_mode': 'Markdown'
+                        }
+                        response = requests.post(photo_api, json=payload, timeout=10)
+                        response.raise_for_status()
+                        sent_successfully = True
+                    except Exception as img_error:
+                        # If image fails, fall back to text message
+                        print(f"⚠ Image failed ({str(img_error)}), sending as text...")
+                
+                # If no image or image failed, send as text
+                if not sent_successfully:
                     payload = {
                         'chat_id': self.telegram_chat_id,
                         'text': message,
@@ -587,8 +595,7 @@ _Style: {style}_
                         'disable_web_page_preview': True
                     }
                     response = requests.post(telegram_api, json=payload, timeout=10)
-                
-                response.raise_for_status()
+                    response.raise_for_status()
                 
                 print(f"✓ Sent: {opp['title'][:50]}...")
                 time.sleep(1)  # Rate limiting
