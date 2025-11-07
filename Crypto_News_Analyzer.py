@@ -17,6 +17,11 @@ import random
 import google.generativeai as genai
 from dotenv import load_dotenv
 from bs4 import BeautifulSoup
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 # Load environment variables from .env file
 load_dotenv()
@@ -167,6 +172,34 @@ class CryptoNewsAnalyzer:
         except Exception as e:
             return None
     
+    def _fetch_image_with_selenium(self, url: str) -> Optional[str]:
+        """Fetch image from a page using Selenium to handle JavaScript rendering."""
+        try:
+            chrome_options = Options()
+            chrome_options.add_argument("--headless")
+            chrome_options.add_argument("--no-sandbox")
+            chrome_options.add_argument("--disable-dev-shm-usage")
+            chrome_options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36")
+
+            with webdriver.Chrome(options=chrome_options) as driver:
+                driver.get(url)
+                # Wait for the main image or article body to be present
+                wait = WebDriverWait(driver, 10)
+                # Look for Open Graph image first, as it's the most reliable
+                og_image = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "meta[property='og:image']")))
+                if og_image:
+                    return og_image.get_attribute('content')
+                
+                # Fallback to the first image in the article tag
+                article_image = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "article img")))
+                if article_image:
+                    return article_image.get_attribute('src')
+
+        except Exception as e:
+            print(f"ℹ Selenium scraping failed for {url}: {str(e)}")
+            return None
+        return None
+
     def _normalize_url(self, url: str) -> str:
         """Normalize URL by removing query parameters and fragments"""
         from urllib.parse import urlparse, urlunparse
@@ -567,9 +600,18 @@ _Style: {style}_
                 # Try to get image URL
                 image_url = opp.get('image_url')
                 
-                # If no image in RSS, try fetching from article (only for non-CoinGecko sources)
+                # If no image in RSS, try fetching from the article URL
                 if not image_url and opp['source'] not in ['CoinGecko']:
-                    image_url = self._fetch_image_from_article(opp.get('link', ''))
+                    article_url = opp.get('link', '')
+                    if article_url:
+                        # First, try the fast, simple scraper
+                        print(f"ℹ No RSS image for '{opp['title'][:30]}...'. Trying simple scrape.")
+                        image_url = self._fetch_image_from_article(article_url)
+                        
+                        # If the simple scraper fails, use the powerful (but slower) Selenium scraper
+                        if not image_url:
+                            print(f"ℹ Simple scrape failed. Trying advanced scrape with Selenium...")
+                            image_url = self._fetch_image_with_selenium(article_url)
                 
                 # Send with image if available, otherwise text only
                 sent_successfully = False
