@@ -574,21 +574,33 @@ _Style: {style}_
                 # Send with image if available, otherwise text only
                 sent_successfully = False
                 if image_url:
-                    try:
-                        # Try to send as photo with caption
-                        photo_api = f"https://api.telegram.org/bot{self.telegram_bot_token}/sendPhoto"
-                        payload = {
-                            'chat_id': self.telegram_chat_id,
-                            'photo': image_url,
-                            'caption': message,
-                            'parse_mode': 'Markdown'
-                        }
-                        response = requests.post(photo_api, json=payload, timeout=10)
-                        response.raise_for_status()
-                        sent_successfully = True
-                    except Exception as img_error:
-                        # If image fails, fall back to text message
-                        print(f"⚠ Image failed ({str(img_error)}), sending as text...")
+                    # Check if message exceeds Telegram's caption limit (1024 chars)
+                    if len(message) > 1024:
+                        print("ℹ Message is too long for a caption. Sending image and text separately.")
+                        try:
+                            # Send the photo without a caption
+                            photo_api = f"https://api.telegram.org/bot{self.telegram_bot_token}/sendPhoto"
+                            photo_payload = {'chat_id': self.telegram_chat_id, 'photo': image_url}
+                            photo_response = requests.post(photo_api, json=photo_payload, timeout=10)
+                            photo_response.raise_for_status()
+                            # The text will be sent in the 'if not sent_successfully' block below
+                        except Exception as img_error:
+                            print(f"⚠ Image failed to send separately ({str(img_error)}). Proceeding with text only.")
+                    else:
+                        # Message is short enough for a caption
+                        try:
+                            photo_api = f"https://api.telegram.org/bot{self.telegram_bot_token}/sendPhoto"
+                            payload = {
+                                'chat_id': self.telegram_chat_id,
+                                'photo': image_url,
+                                'caption': message,
+                                'parse_mode': 'Markdown'
+                            }
+                            response = requests.post(photo_api, json=payload, timeout=10)
+                            response.raise_for_status()
+                            sent_successfully = True
+                        except Exception as img_error:
+                            print(f"⚠ Image with caption failed ({str(img_error)}), sending as text...")
                 
                 # If no image or image failed, send as text
                 if not sent_successfully:
