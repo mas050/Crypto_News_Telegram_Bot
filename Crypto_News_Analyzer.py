@@ -621,6 +621,12 @@ _Style: {style}_
     
     def run_workflow(self) -> None:
         """Execute the complete workflow"""
+        # Check for quiet hours (10 PM to 7 AM)
+        current_hour = datetime.now().hour
+        if current_hour >= 22 or current_hour < 7:
+            print(f"🌙 Quiet hours are active (10 PM - 7 AM). Skipping run.")
+            return
+            
         print(f"\n{'='*60}")
         print(f"🔄 Starting Crypto News Analysis Workflow")
         print(f"⏰ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
