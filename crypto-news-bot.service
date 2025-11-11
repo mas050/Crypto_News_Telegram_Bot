@@ -1,0 +1,37 @@
+[Unit]
+Description=Crypto News Analyzer Bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=sebastien
+WorkingDirectory=/home/sebastien/Python/Crypto_News_Telegram_Bot
+Environment="PATH=/home/sebastien/Python/Crypto_News_Telegram_Bot/venv/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=/home/sebastien/Python/Crypto_News_Telegram_Bot/venv/bin/python /home/sebastien/Python/Crypto_News_Telegram_Bot/Crypto_News_Analyzer.py
+
+# Restart configuration - critical for reliability
+Restart=always
+RestartSec=30
+StartLimitInterval=300
+StartLimitBurst=5
+
+# Resource limits for Raspberry Pi
+MemoryMax=512M
+MemoryHigh=400M
+CPUQuota=80%
+
+# Logging
+StandardOutput=append:/home/sebastien/Python/Crypto_News_Telegram_Bot/bot.log
+StandardError=append:/home/sebastien/Python/Crypto_News_Telegram_Bot/bot_error.log
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+
+# Graceful shutdown
+TimeoutStopSec=30
+KillMode=mixed
+
+[Install]
+WantedBy=multi-user.target

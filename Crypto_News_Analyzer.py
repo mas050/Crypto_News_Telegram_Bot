@@ -14,6 +14,10 @@ import os
 import json
 import hashlib
 import random
+import logging
+import sys
+import traceback
+from functools import wraps
 import google.generativeai as genai
 from dotenv import load_dotenv
 from bs4 import BeautifulSoup
@@ -22,9 +26,44 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException, WebDriverException
 
 # Load environment variables from .env file
 load_dotenv()
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('crypto_news_bot.log'),
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+logger = logging.getLogger(__name__)
+
+
+def retry_on_failure(max_retries=3, delay=5, backoff=2):
+    """Decorator to retry a function on failure with exponential backoff"""
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            retries = 0
+            current_delay = delay
+            while retries < max_retries:
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    retries += 1
+                    if retries >= max_retries:
+                        logger.error(f"{func.__name__} failed after {max_retries} retries: {str(e)}")
+                        raise
+                    logger.warning(f"{func.__name__} failed (attempt {retries}/{max_retries}): {str(e)}. Retrying in {current_delay}s...")
+                    time.sleep(current_delay)
+                    current_delay *= backoff
+            return None
+        return wrapper
+    return decorator
 
 
 class CryptoNewsAnalyzer:
@@ -174,31 +213,61 @@ class CryptoNewsAnalyzer:
     
     def _fetch_image_with_selenium(self, url: str) -> Optional[str]:
         """Fetch image from a page using Selenium to handle JavaScript rendering."""
+        driver = None
         try:
             chrome_options = Options()
             chrome_options.add_argument("--headless")
             chrome_options.add_argument("--no-sandbox")
             chrome_options.add_argument("--disable-dev-shm-usage")
+            chrome_options.add_argument("--disable-gpu")
+            chrome_options.add_argument("--disable-extensions")
+            chrome_options.add_argument("--disable-software-rasterizer")
+            chrome_options.add_argument("--single-process")  # Critical for Raspberry Pi
             chrome_options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36")
+            
+            # Set page load timeout to prevent hanging
+            chrome_options.page_load_strategy = 'eager'
 
-            with webdriver.Chrome(options=chrome_options) as driver:
-                driver.get(url)
-                # Wait for the main image or article body to be present
-                wait = WebDriverWait(driver, 10)
+            driver = webdriver.Chrome(options=chrome_options)
+            driver.set_page_load_timeout(15)  # 15 second timeout
+            driver.get(url)
+            
+            # Wait for the main image or article body to be present
+            wait = WebDriverWait(driver, 10)
+            
+            try:
                 # Look for Open Graph image first, as it's the most reliable
                 og_image = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "meta[property='og:image']")))
                 if og_image:
-                    return og_image.get_attribute('content')
-                
+                    image_url = og_image.get_attribute('content')
+                    return image_url
+            except TimeoutException:
+                logger.debug(f"No OG image found for {url}")
+            
+            try:
                 # Fallback to the first image in the article tag
                 article_image = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "article img")))
                 if article_image:
-                    return article_image.get_attribute('src')
-
-        except Exception as e:
-            print(f"ℹ Selenium scraping failed for {url}: {str(e)}")
+                    image_url = article_image.get_attribute('src')
+                    return image_url
+            except TimeoutException:
+                logger.debug(f"No article image found for {url}")
+            
             return None
-        return None
+
+        except (TimeoutException, WebDriverException) as e:
+            logger.warning(f"Selenium scraping failed for {url}: {str(e)}")
+            return None
+        except Exception as e:
+            logger.error(f"Unexpected error in Selenium scraping for {url}: {str(e)}")
+            return None
+        finally:
+            # CRITICAL: Always close the driver to prevent memory leaks
+            if driver:
+                try:
+                    driver.quit()
+                except Exception as e:
+                    logger.error(f"Error closing Selenium driver: {str(e)}")
 
     def _normalize_url(self, url: str) -> str:
         """Normalize URL by removing query parameters and fragments"""
@@ -276,7 +345,7 @@ class CryptoNewsAnalyzer:
         
         for source_name, feed_url in self.rss_feeds.items():
             try:
-                print(f"Fetching RSS feed from {source_name}...")
+                logger.info(f"Fetching RSS feed from {source_name}...")
                 
                 # For CoinDesk, manually fetch with requests to handle redirects
                 if source_name == 'CoinDesk':
@@ -289,11 +358,11 @@ class CryptoNewsAnalyzer:
                 
                 # Debug: Check if feed has errors
                 if hasattr(feed, 'bozo') and feed.bozo:
-                    print(f"⚠ Feed parsing warning for {source_name}: {feed.get('bozo_exception', 'Unknown error')}")
+                    logger.warning(f"Feed parsing warning for {source_name}: {feed.get('bozo_exception', 'Unknown error')}")
                 
                 # Debug: Check total entries available
                 if len(feed.entries) == 0:
-                    print(f"⚠ No entries found in {source_name} feed. Status: {feed.get('status', 'N/A')}")
+                    logger.warning(f"No entries found in {source_name} feed. Status: {feed.get('status', 'N/A')}")
                 
                 for entry in feed.entries[:10]:  # Limit to 10 most recent
                     article = {
@@ -307,16 +376,16 @@ class CryptoNewsAnalyzer:
                     }
                     all_articles.append(article)
                 
-                print(f"✓ Fetched {len(feed.entries[:10])} articles from {source_name}")
+                logger.info(f"✓ Fetched {len(feed.entries[:10])} articles from {source_name}")
             except Exception as e:
-                print(f"✗ Error fetching {source_name}: {str(e)}")
+                logger.error(f"Error fetching {source_name}: {str(e)}", exc_info=True)
         
         return all_articles
     
     def fetch_coingecko_data(self) -> List[Dict[str, Any]]:
         """Fetch trending coins and market data from CoinGecko"""
         try:
-            print("Fetching CoinGecko trending data...")
+            logger.info("Fetching CoinGecko trending data...")
             
             # Get trending coins
             trending_url = f"{self.coingecko_api}/search/trending"
@@ -335,11 +404,11 @@ class CryptoNewsAnalyzer:
                     'type': 'coingecko'
                 })
             
-            print(f"✓ Fetched {len(trending_items)} trending coins")
+            logger.info(f"✓ Fetched {len(trending_items)} trending coins")
             return trending_items
             
         except Exception as e:
-            print(f"✗ Error fetching CoinGecko data: {str(e)}")
+            logger.error(f"Error fetching CoinGecko data: {str(e)}", exc_info=True)
             return []
     
     def search_twitter(self, query: str = "crypto") -> List[Dict[str, Any]]:
@@ -348,11 +417,11 @@ class CryptoNewsAnalyzer:
         # This is a placeholder - you'll need to implement proper Twitter API integration
         
         if not self.twitter_bearer_token:
-            print("⚠ Twitter Bearer Token not set, skipping Twitter search")
+            logger.info("Twitter Bearer Token not set, skipping Twitter search")
             return []
         
         try:
-            print(f"Searching Twitter for: {query}...")
+            logger.info(f"Searching Twitter for: {query}...")
             
             url = "https://api.twitter.com/2/tweets/search/recent"
             headers = {"Authorization": f"Bearer {self.twitter_bearer_token}"}
@@ -376,11 +445,11 @@ class CryptoNewsAnalyzer:
                     'type': 'twitter'
                 })
             
-            print(f"✓ Fetched {len(tweets)} tweets")
+            logger.info(f"✓ Fetched {len(tweets)} tweets")
             return tweets
             
         except Exception as e:
-            print(f"✗ Error searching Twitter: {str(e)}")
+            logger.error(f"Error searching Twitter: {str(e)}", exc_info=True)
             return []
     
     def merge_sources(self, *sources) -> List[Dict[str, Any]]:
@@ -390,13 +459,14 @@ class CryptoNewsAnalyzer:
             if isinstance(source, list):
                 merged.extend(source)
         
-        print(f"\n📊 Total items collected: {len(merged)}")
+        logger.info(f"Total items collected: {len(merged)}")
         return merged
     
+    @retry_on_failure(max_retries=3, delay=10)
     def analyze_with_gemini(self, items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Analyze items using Google Gemini 2.5 Flash to identify opportunities"""
         if not self.gemini_api_key:
-            print("⚠ Gemini API key not set, skipping AI analysis")
+            logger.warning("Gemini API key not set, skipping AI analysis")
             return []
         
         # Select a random prompt style for this run
@@ -406,9 +476,9 @@ class CryptoNewsAnalyzer:
             prompt_template = prompt_data['prompt']
             prompt_emoji = prompt_data['emoji']
             self.current_prompt_style = prompt_key
-            print(f"\n🤖 Analyzing with '{prompt_key}' style {prompt_emoji}...")
+            logger.info(f"Analyzing with '{prompt_key}' style {prompt_emoji}...")
         else:
-            print("\n🤖 Analyzing content with Google Gemini 2.5 Flash...")
+            logger.info("Analyzing content with Google Gemini 2.5 Flash...")
             prompt_template = None
         
         analyzed_items = []
@@ -482,7 +552,7 @@ Respond in JSON format for each item:
                             analyzed_items.append(item)
                     
                 except json.JSONDecodeError:
-                    print(f"⚠ Could not parse JSON response for batch {i//batch_size + 1}")
+                    logger.warning(f"Could not parse JSON response for batch {i//batch_size + 1}")
                     # Add items without analysis
                     for item in batch:
                         item['ai_analysis'] = {'explanation': response_text[:200]}
@@ -493,7 +563,7 @@ Respond in JSON format for each item:
                 time.sleep(2)
                 
             except Exception as e:
-                print(f"✗ Error analyzing batch {i//batch_size + 1}: {str(e)}")
+                logger.error(f"Error analyzing batch {i//batch_size + 1}: {str(e)}", exc_info=True)
                 # Add items without analysis
                 for item in batch:
                     item['ai_analysis'] = None
@@ -506,7 +576,7 @@ Respond in JSON format for each item:
         """Filter items to only include identified opportunities"""
         opportunities = [item for item in items if item.get('is_opportunity', False)]
         
-        print(f"\n🎯 Found {len(opportunities)} opportunities out of {len(items)} items")
+        logger.info(f"Found {len(opportunities)} opportunities out of {len(items)} items")
         return opportunities
     
     def filter_duplicates(self, items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -520,7 +590,7 @@ Respond in JSON format for each item:
             else:
                 duplicate_count += 1
         
-        print(f"🔍 Filtered out {duplicate_count} already-analyzed item(s), {len(new_items)} new items to analyze")
+        logger.info(f"Filtered out {duplicate_count} already-analyzed item(s), {len(new_items)} new items to analyze")
         return new_items
     
     def send_to_telegram(self, opportunities: List[Dict[str, Any]]) -> None:
@@ -678,13 +748,13 @@ _Style: {style}_
         # Check for quiet hours (10 PM to 7 AM)
         current_hour = datetime.now().hour
         if current_hour >= 22 or current_hour < 7:
-            print(f"🌙 Quiet hours are active (10 PM - 7 AM). Skipping run.")
+            logger.info("Quiet hours are active (10 PM - 7 AM). Skipping run.")
             return
             
-        print(f"\n{'='*60}")
-        print(f"🔄 Starting Crypto News Analysis Workflow")
-        print(f"⏰ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        print(f"{'='*60}\n")
+        logger.info("="*60)
+        logger.info("Starting Crypto News Analysis Workflow")
+        logger.info(f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        logger.info("="*60)
         
         try:
             # Step 1: Fetch all sources
@@ -696,14 +766,14 @@ _Style: {style}_
             all_items = self.merge_sources(rss_articles, coingecko_data, twitter_data)
             
             if not all_items:
-                print("\n⚠ No items collected. Exiting workflow.")
+                logger.warning("No items collected. Exiting workflow.")
                 return
             
             # Step 3: Filter out duplicates BEFORE AI analysis (saves API calls!)
             new_items = self.filter_duplicates(all_items)
             
             if not new_items:
-                print("\n⚠ No new items to analyze. All items were duplicates.")
+                logger.info("No new items to analyze. All items were duplicates.")
                 return
             
             # Step 4: AI Analysis (only on new items)
@@ -720,43 +790,75 @@ _Style: {style}_
             if opportunities:
                 max_posts = random.randint(1, 3)
                 selected_opportunities = random.sample(opportunities, min(max_posts, len(opportunities)))
-                print(f"🎲 Randomly selected {len(selected_opportunities)} out of {len(opportunities)} opportunities to post")
+                logger.info(f"Randomly selected {len(selected_opportunities)} out of {len(opportunities)} opportunities to post")
             else:
                 selected_opportunities = []
             
             # Step 7: Send to Telegram
             self.send_to_telegram(selected_opportunities)
             
-            # Step 7: Save history
+            # Step 8: Save history
             self._save_history()
             
-            print(f"\n{'='*60}")
-            print(f"✅ Workflow completed successfully!")
-            print(f"{'='*60}\n")
+            logger.info("="*60)
+            logger.info("Workflow completed successfully!")
+            logger.info("="*60)
             
         except Exception as e:
-            print(f"\n❌ Workflow error: {str(e)}")
-            import traceback
-            traceback.print_exc()
+            logger.error(f"Workflow error: {str(e)}", exc_info=True)
+            # Don't re-raise - let the bot continue running
 
 
 def main():
     """Main function to run the analyzer"""
-    analyzer = CryptoNewsAnalyzer()
+    logger.info("="*60)
+    logger.info("Crypto News Analyzer Bot Starting")
+    logger.info("="*60)
     
-    # Run immediately
-    analyzer.run_workflow()
+    try:
+        analyzer = CryptoNewsAnalyzer()
+        
+        # Run immediately
+        logger.info("Running initial workflow...")
+        try:
+            analyzer.run_workflow()
+        except Exception as e:
+            logger.error(f"Initial workflow failed: {str(e)}", exc_info=True)
+        
+        # Schedule to run every hour (adjust as needed)
+        schedule.every(1).hours.do(analyzer.run_workflow)
+        
+        logger.info("Scheduler started. Running every 1 hour.")
+        logger.info("Press Ctrl+C to stop.")
+        
+        # Keep the script running with error recovery
+        consecutive_errors = 0
+        max_consecutive_errors = 10
+        
+        while True:
+            try:
+                schedule.run_pending()
+                consecutive_errors = 0  # Reset on success
+                time.sleep(60)
+            except KeyboardInterrupt:
+                logger.info("Received shutdown signal. Exiting gracefully...")
+                break
+            except Exception as e:
+                consecutive_errors += 1
+                logger.error(f"Error in main loop (consecutive errors: {consecutive_errors}): {str(e)}", exc_info=True)
+                
+                if consecutive_errors >= max_consecutive_errors:
+                    logger.critical(f"Too many consecutive errors ({max_consecutive_errors}). Shutting down.")
+                    sys.exit(1)
+                
+                # Wait before retrying
+                time.sleep(60)
     
-    # Schedule to run every hour (adjust as needed)
-    schedule.every(1).hours.do(analyzer.run_workflow)
+    except Exception as e:
+        logger.critical(f"Fatal error in main: {str(e)}", exc_info=True)
+        sys.exit(1)
     
-    print("\n⏰ Scheduler started. Running every 1 hour.")
-    print("Press Ctrl+C to stop.\n")
-    
-    # Keep the script running
-    while True:
-        schedule.run_pending()
-        time.sleep(60)
+    logger.info("Bot shutdown complete.")
 
 
 if __name__ == "__main__":

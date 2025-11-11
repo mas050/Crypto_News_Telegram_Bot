@@ -108,22 +108,57 @@ Press `Ctrl+C` to stop after verifying it works.
 sudo nano /etc/systemd/system/crypto-news-bot.service
 ```
 
-### Step 2: Add the Following Content
+### Step 2: Copy the Service File
+
+The repository now includes an improved service file with crash recovery:
+
+```bash
+sudo cp ~/Python/Crypto_News_Telegram_Bot/crypto-news-bot.service /etc/systemd/system/
+```
+
+**Or manually create it:**
+
+```bash
+sudo nano /etc/systemd/system/crypto-news-bot.service
+```
+
+**Add the following content:**
 
 ```ini
 [Unit]
 Description=Crypto News Analyzer Bot
-After=network.target
+After=network-online.target
+Wants=network-online.target
 
 [Service]
 Type=simple
 User=sebastien
 WorkingDirectory=/home/sebastien/Python/Crypto_News_Telegram_Bot
+Environment="PATH=/home/sebastien/Python/Crypto_News_Telegram_Bot/venv/bin:/usr/local/bin:/usr/bin:/bin"
 ExecStart=/home/sebastien/Python/Crypto_News_Telegram_Bot/venv/bin/python /home/sebastien/Python/Crypto_News_Telegram_Bot/Crypto_News_Analyzer.py
+
+# Restart configuration - critical for reliability
 Restart=always
-RestartSec=10
+RestartSec=30
+StartLimitInterval=300
+StartLimitBurst=5
+
+# Resource limits for Raspberry Pi
+MemoryMax=512M
+MemoryHigh=400M
+CPUQuota=80%
+
+# Logging
 StandardOutput=append:/home/sebastien/Python/Crypto_News_Telegram_Bot/bot.log
 StandardError=append:/home/sebastien/Python/Crypto_News_Telegram_Bot/bot_error.log
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+
+# Graceful shutdown
+TimeoutStopSec=30
+KillMode=mixed
 
 [Install]
 WantedBy=multi-user.target
@@ -132,7 +167,7 @@ WantedBy=multi-user.target
 **Important Notes:**
 - Replace `sebastien` with your actual username if different
 - Replace `/home/sebastien/Python/Crypto_News_Telegram_Bot` with your actual path
-- The key change is using `venv/bin/python` instead of system Python
+- The service now includes memory limits and automatic restart on crash
 
 **Save and exit**: Press `Ctrl+X`, then `Y`, then `Enter`
 
@@ -288,6 +323,21 @@ Now you can update anytime with:
 
 ## 🔧 Troubleshooting
 
+### ⚠️ Bot Crashes Daily? See TROUBLESHOOTING.md
+
+If your bot keeps crashing, check the comprehensive troubleshooting guide:
+
+```bash
+cat ~/Python/Crypto_News_Telegram_Bot/TROUBLESHOOTING.md
+```
+
+**Quick fix for daily crashes:**
+```bash
+# Use the update script to get all the latest fixes
+chmod +x ~/Python/Crypto_News_Telegram_Bot/update-bot.sh
+~/Python/Crypto_News_Telegram_Bot/update-bot.sh
+```
+
 ### Bot Not Starting
 
 ```bash
@@ -295,7 +345,10 @@ Now you can update anytime with:
 sudo journalctl -u crypto-news-bot.service -n 50
 
 # Check error log file
-cat ~/Crypto_News_Telegram_Bot/bot_error.log
+cat ~/Python/Crypto_News_Telegram_Bot/bot_error.log
+
+# Check the new detailed log
+tail -50 ~/Python/Crypto_News_Telegram_Bot/crypto_news_bot.log
 ```
 
 ### Permission Issues
