@@ -18,6 +18,7 @@ import logging
 import sys
 import traceback
 from functools import wraps
+import signal
 import google.generativeai as genai
 from dotenv import load_dotenv
 from bs4 import BeautifulSoup
@@ -41,6 +42,30 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger(__name__)
+
+
+def timeout_handler(signum, frame):
+    """Handler for timeout signal"""
+    raise TimeoutError("Operation timed out")
+
+
+def with_timeout(timeout_seconds=15):
+    """Decorator to add timeout to a function"""
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            # Set the signal handler and alarm
+            old_handler = signal.signal(signal.SIGALRM, timeout_handler)
+            signal.alarm(timeout_seconds)
+            try:
+                result = func(*args, **kwargs)
+            finally:
+                # Disable the alarm and restore old handler
+                signal.alarm(0)
+                signal.signal(signal.SIGALRM, old_handler)
+            return result
+        return wrapper
+    return decorator
 
 
 def retry_on_failure(max_retries=3, delay=5, backoff=2):
@@ -339,6 +364,47 @@ class CryptoNewsAnalyzer:
         if url_hash:
             self.sent_news_hashes[url_hash] = time.time()
         
+    def _fetch_single_feed(self, source_name: str, feed_url: str) -> List[Dict[str, Any]]:
+        """Fetch a single RSS feed with timeout protection"""
+        articles = []
+        
+        try:
+            # Always fetch with requests first to have better timeout control
+            headers = {'User-Agent': 'Mozilla/5.0 (compatible; CryptoNewsBot/1.0)'}
+            response = requests.get(feed_url, headers=headers, timeout=15, allow_redirects=True)
+            response.raise_for_status()
+            feed = feedparser.parse(response.content)
+            
+            # Debug: Check if feed has errors
+            if hasattr(feed, 'bozo') and feed.bozo:
+                logger.warning(f"Feed parsing warning for {source_name}: {feed.get('bozo_exception', 'Unknown error')}")
+            
+            # Debug: Check total entries available
+            if len(feed.entries) == 0:
+                logger.warning(f"No entries found in {source_name} feed. Status: {feed.get('status', 'N/A')}")
+                return articles
+            
+            for entry in feed.entries[:10]:  # Limit to 10 most recent
+                article = {
+                    'source': source_name,
+                    'title': entry.title,
+                    'link': entry.link,
+                    'summary': entry.get('summary', ''),
+                    'image_url': self._extract_image_from_entry(entry),
+                    'published': entry.get('published', ''),
+                    'type': 'rss'
+                }
+                articles.append(article)
+            
+            logger.info(f"✓ Fetched {len(articles)} articles from {source_name}")
+            
+        except requests.Timeout:
+            logger.error(f"Timeout fetching {source_name} (15s limit exceeded)")
+        except Exception as e:
+            logger.error(f"Error fetching {source_name}: {str(e)}")
+        
+        return articles
+    
     def fetch_rss_feeds(self) -> List[Dict[str, Any]]:
         """Fetch articles from all RSS feeds"""
         all_articles = []
@@ -346,39 +412,10 @@ class CryptoNewsAnalyzer:
         for source_name, feed_url in self.rss_feeds.items():
             try:
                 logger.info(f"Fetching RSS feed from {source_name}...")
-                
-                # For CoinDesk, manually fetch with requests to handle redirects
-                if source_name == 'CoinDesk':
-                    headers = {'User-Agent': 'Mozilla/5.0 (compatible; CryptoNewsBot/1.0)'}
-                    response = requests.get(feed_url, headers=headers, timeout=10, allow_redirects=True)
-                    response.raise_for_status()
-                    feed = feedparser.parse(response.content)
-                else:
-                    feed = feedparser.parse(feed_url, agent='Mozilla/5.0 (compatible; CryptoNewsBot/1.0)')
-                
-                # Debug: Check if feed has errors
-                if hasattr(feed, 'bozo') and feed.bozo:
-                    logger.warning(f"Feed parsing warning for {source_name}: {feed.get('bozo_exception', 'Unknown error')}")
-                
-                # Debug: Check total entries available
-                if len(feed.entries) == 0:
-                    logger.warning(f"No entries found in {source_name} feed. Status: {feed.get('status', 'N/A')}")
-                
-                for entry in feed.entries[:10]:  # Limit to 10 most recent
-                    article = {
-                        'source': source_name,
-                        'title': entry.title,
-                        'link': entry.link,
-                        'summary': entry.get('summary', ''),
-                        'image_url': self._extract_image_from_entry(entry),
-                        'published': entry.get('published', ''),
-                        'type': 'rss'
-                    }
-                    all_articles.append(article)
-                
-                logger.info(f"✓ Fetched {len(feed.entries[:10])} articles from {source_name}")
+                articles = self._fetch_single_feed(source_name, feed_url)
+                all_articles.extend(articles)
             except Exception as e:
-                logger.error(f"Error fetching {source_name}: {str(e)}", exc_info=True)
+                logger.error(f"Unexpected error with {source_name}: {str(e)}", exc_info=True)
         
         return all_articles
     
