@@ -14,6 +14,15 @@ sudo systemctl stop crypto-news-bot.service
 echo "📥 Pulling latest changes from GitHub..."
 git pull origin main
 
+# Update channel ID in .env (if not already set)
+echo "🔧 Ensuring channel ID is configured..."
+if grep -q "TELEGRAM_CHAT_ID=-1003448714142" .env; then
+    echo "   ✓ Channel ID already configured"
+else
+    echo "   Updating channel ID..."
+    sed -i 's/^TELEGRAM_CHAT_ID=.*/TELEGRAM_CHAT_ID=-1003448714142/' .env
+fi
+
 # Install/update dependencies
 echo "📦 Installing dependencies..."
 source venv/bin/activate
